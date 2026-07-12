@@ -27,6 +27,27 @@ class SharedState(TypedDict):
   summary: Annotated[str, custom_reducer]
 
 
+def extract_text(response) -> str:
+    """ Normalizes an LLM response's content into a plain string.
+
+    Some models (e.g. Gemini) can return `content` as a list of content
+    blocks (dicts with a 'text' key, or plain strings) instead of a str.
+    """
+    if not response:
+        return "No summary available."
+
+    content = response.content
+    if isinstance(content, list):
+        text = "".join(
+            part.get("text", "") if isinstance(part, dict) else str(part)
+            for part in content
+        )
+    else:
+        text = content
+
+    return text.strip() if text else "No summary available."
+
+
 def get_article_content(article_name: str) -> str:
     """ Function to get the content of an article."""
     profile = open('./articles/' + article_name, 'r')
@@ -45,7 +66,7 @@ def get_bloom_filter_article_summary(state: SharedState) -> SharedState:
         f"Summarize the following article:\n\n{article_content}\n\n"
         "Please provide a concise summary that captures the main points. Please keep the summary under 200 words."
     )
-    state['bloom_filter_article_summary'] = response.content.strip() if response else "No summary available."
+    state['bloom_filter_article_summary'] = extract_text(response)
 
     return state
 
@@ -60,7 +81,7 @@ def get_graph_db_article_summary(state: SharedState) -> SharedState:
         f"Summarize the following article:\n\n{article_content}\n\n"
         "Please provide a concise summary that captures the main points. Please keep the summary under 200 words."
     )
-    state['graph_db_article_summary'] = response.content.strip() if response else "No summary available."
+    state['graph_db_article_summary'] = extract_text(response)
 
     return state
 
